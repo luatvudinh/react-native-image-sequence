@@ -41,10 +41,6 @@
 }
 
 - (void)onImageLoadTaskAtIndex:(NSUInteger)index image:(UIImage *)image {
-    if (index == 0) {
-        self.image = image;
-    }
-
     [_activeTasks removeObjectForKey:@(index)];
 
     _imagesLoaded[@(index)] = image;
@@ -59,6 +55,10 @@
     for (NSUInteger index = 0; index < _imagesLoaded.allValues.count; index++) {
         UIImage *image = _imagesLoaded[@(index)];
         [images addObject:image];
+
+        if (index == 0) {
+            self.image = image;
+        }
     }
 
     [_imagesLoaded removeAllObjects];
