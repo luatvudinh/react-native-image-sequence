@@ -31,9 +31,7 @@
 
         dispatch_async(dispatch_queue_create("dk.mads-lee.ImageSequence.Downloader", NULL), ^{
             UIImage *image = [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:url]]];
-            dispatch_async(dispatch_get_main_queue(), ^{
-              [weakSelf onImageLoadTaskAtIndex:index image:image];
-            });
+            [weakSelf onImageLoadTaskAtIndex:index image:image];
         });
 
         _activeTasks[@(index)] = url;
@@ -46,7 +44,12 @@
     _imagesLoaded[@(index)] = image;
 
     if (_activeTasks.allValues.count == 0) {
-        [self onImagesLoaded];
+        if (_onLoadImageCompleted != nil) {
+            _onLoadImageCompleted(@{@"loadCompleted": @TRUE});
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self onImagesLoaded];
+        });
     }
 }
 
@@ -55,19 +58,21 @@
     for (NSUInteger index = 0; index < _imagesLoaded.allValues.count; index++) {
         UIImage *image = _imagesLoaded[@(index)];
         [images addObject:image];
-
-        if (index == 0) {
-            self.image = image;
-        }
     }
 
     [_imagesLoaded removeAllObjects];
 
-    self.image = nil;
     self.animationDuration = images.count * (1.0f / _framesPerSecond);
     self.animationImages = images;
     self.animationRepeatCount = _loop ? 0 : 1;
     [self startAnimating];
+
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, self.animationDuration * NSEC_PER_SEC);
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        if (self.onAnimationFinished != nil) {
+            self.onAnimationFinished(@{@"animationFinished": @TRUE});
+        }
+    });
 }
 
 - (void)setFramesPerSecond:(NSUInteger)framesPerSecond {

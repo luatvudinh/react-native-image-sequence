@@ -4,8 +4,10 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "RCTView.h"
 
 @interface RCTImageSequenceView : UIImageView
-
+@property (nonatomic, copy) RCTDirectEventBlock onLoadImageCompleted;
+@property (nonatomic, copy) RCTDirectEventBlock onAnimationFinished;
 
 @end
