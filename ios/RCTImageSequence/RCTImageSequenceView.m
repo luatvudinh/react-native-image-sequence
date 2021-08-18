@@ -10,6 +10,7 @@
     NSMutableDictionary *_activeTasks;
     NSMutableDictionary *_imagesLoaded;
     BOOL _loop;
+    BOOL _enableAnimation;
 }
 
 - (void)setImages:(NSArray *)images {
@@ -54,6 +55,25 @@
     }
 }
 
+- (void)setEnableAnimation:(NSUInteger)animating {
+    _enableAnimation = animating;
+    if (animating) {
+        [self startAnimating];
+        [self setupEndAnimationEvent];
+    } else {
+        [self stopAnimating];
+    }
+}
+
+- (void)setupEndAnimationEvent {
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, self.animationDuration * NSEC_PER_SEC);
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        if (self.onAnimationFinished != nil) {
+            self.onAnimationFinished(@{@"animationFinished": @TRUE});
+        }
+    });
+}
+
 - (void)onImagesLoaded {
     NSMutableArray *images = [NSMutableArray new];
     for (NSUInteger index = 0; index < _imagesLoaded.allValues.count; index++) {
@@ -66,14 +86,23 @@
     self.animationDuration = images.count * (1.0f / _framesPerSecond);
     self.animationImages = images;
     self.animationRepeatCount = _loop ? 0 : 1;
+    if (_enableAnimation) {
+        self.hidden = YES;
+    }
     [self startAnimating];
-
-    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, self.animationDuration * NSEC_PER_SEC);
-    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
-        if (self.onAnimationFinished != nil) {
-            self.onAnimationFinished(@{@"animationFinished": @TRUE});
+    dispatch_time_t sTime = dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC);
+    dispatch_after(sTime, dispatch_get_main_queue(), ^(void){
+        if (!self->_enableAnimation) {
+            if (self.isAnimating) {
+                [self stopAnimating];
+            }
+            self.hidden = NO;
         }
     });
+
+    if (_enableAnimation) {
+        [self setupEndAnimationEvent];
+    }
 }
 
 - (void)setFramesPerSecond:(NSUInteger)framesPerSecond {
