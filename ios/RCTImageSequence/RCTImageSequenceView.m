@@ -31,7 +31,10 @@
 
         dispatch_async(dispatch_queue_create("dk.mads-lee.ImageSequence.Downloader", NULL), ^{
             UIImage *image = [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:url]]];
-            [weakSelf onImageLoadTaskAtIndex:index image:image];
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf onImageLoadTaskAtIndex:index image:image];
+            });
         });
 
         _activeTasks[@(index)] = url;
@@ -47,9 +50,7 @@
         if (_onLoadImageCompleted != nil) {
             _onLoadImageCompleted(@{@"loadCompleted": @TRUE});
         }
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self onImagesLoaded];
-        });
+        [self onImagesLoaded];
     }
 }
 
