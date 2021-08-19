@@ -9,11 +9,18 @@ import android.util.Log;
 import android.os.AsyncTask;
 import android.widget.ImageView;
 
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.uimanager.events.RCTEventEmitter;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.RejectedExecutionException;
 
 
@@ -77,11 +84,6 @@ public class RCTImageSequenceView extends ImageView {
     }
 
     private void onTaskCompleted(DownloadImageTask downloadImageTask, Integer index, Bitmap bitmap) {
-        if (index == 0) {
-            // first image should be displayed as soon as possible.
-            this.setImageBitmap(bitmap);
-        }
-
         bitmaps.put(index, bitmap);
         activeTasks.remove(downloadImageTask);
 
@@ -150,6 +152,29 @@ public class RCTImageSequenceView extends ImageView {
         animationDrawable.setOneShot(!this.loop);
 
         this.setImageDrawable(animationDrawable);
+
+        WritableMap event = Arguments.createMap();
+        event.putBoolean("loadCompleted", true);
+        ReactContext reactContext = (ReactContext) getContext();
+        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(
+                getId(),
+                "onLoadImageCompleted",
+                event);
+
         animationDrawable.start();
+
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                WritableMap event = Arguments.createMap();
+                event.putBoolean("animationFinished", true);
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(
+                        getId(),
+                        "onAnimationFinished",
+                        event);
+            }
+
+        }, bitmaps.size() * 1000 / framesPerSecond);
     }
 }
