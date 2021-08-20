@@ -62,7 +62,7 @@ public class RCTImageSequenceView extends ImageView {
 
         private Bitmap loadBitmapByLocalResource(String uri) {
             try {
-                return MediaStore.Images.Media.getBitmap(context.getContentResolver() , Uri.parse(this.uri));
+                return MediaStore.Images.Media.getBitmap(context.getContentResolver() , Uri.parse(uri));
             } catch (IOException e) {
                 e.printStackTrace();
                 return null;
