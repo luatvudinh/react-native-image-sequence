@@ -8,6 +8,8 @@ import android.graphics.drawable.BitmapDrawable;
 import android.util.Log;
 import android.os.AsyncTask;
 import android.widget.ImageView;
+import android.provider.MediaStore;
+import android.net.Uri;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
@@ -59,7 +61,13 @@ public class RCTImageSequenceView extends ImageView {
 
 
         private Bitmap loadBitmapByLocalResource(String uri) {
-            return BitmapFactory.decodeResource(this.context.getResources(), resourceDrawableIdHelper.getResourceDrawableId(this.context, uri));
+            try {
+                return MediaStore.Images.Media.getBitmap(context.getContentResolver() , Uri.parse(this.uri));
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+//            return BitmapFactory.decodeResource(this.context.getResources(), resourceDrawableIdHelper.getResourceDrawableId(this.context, uri));
         }
 
         private Bitmap loadBitmapByExternalURL(String uri) {
@@ -104,7 +112,8 @@ public class RCTImageSequenceView extends ImageView {
         bitmaps = new HashMap<>(uris.size());
 
         for (int index = 0; index < uris.size(); index++) {
-            DownloadImageTask task = new DownloadImageTask(index, uris.get(index), getContext());
+            String uri = uris.get(index);
+            DownloadImageTask task = new DownloadImageTask(index, uri, getContext());
             activeTasks.add(task);
 
             try {
@@ -174,7 +183,6 @@ public class RCTImageSequenceView extends ImageView {
                         "onAnimationFinished",
                         event);
             }
-
         }, bitmaps.size() * 1000 / framesPerSecond);
     }
 }
