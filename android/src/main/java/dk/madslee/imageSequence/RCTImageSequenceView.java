@@ -28,7 +28,10 @@ import java.util.concurrent.RejectedExecutionException;
 
 public class RCTImageSequenceView extends ImageView {
     private Integer framesPerSecond = 24;
+    private Integer loadedPos = 0;
     private Boolean loop = true;
+    private Boolean addingQueue = false;
+    private ArrayList<String> uris;
     private ArrayList<AsyncTask> activeTasks;
     private HashMap<Integer, Bitmap> bitmaps;
     private RCTResourceDrawableIdHelper resourceDrawableIdHelper;
@@ -62,9 +65,10 @@ public class RCTImageSequenceView extends ImageView {
 
         private Bitmap loadBitmapByLocalResource(String uri) {
             try {
+//                 return BitmapFactory.decodeStream(context.getContentResolver().openInputStream(Uri.parse(uri)));
                 return MediaStore.Images.Media.getBitmap(context.getContentResolver() , Uri.parse(uri));
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e("react-native-image-sequence", "loadBitmapByLocalResource failed" + e.getMessage());
                 return null;
             }
 //            return BitmapFactory.decodeResource(this.context.getResources(), resourceDrawableIdHelper.getResourceDrawableId(this.context, uri));
@@ -96,11 +100,16 @@ public class RCTImageSequenceView extends ImageView {
         activeTasks.remove(downloadImageTask);
 
         if (activeTasks.isEmpty()) {
-            setupAnimationDrawable();
+            if (loadedPos >= uris.size() - 1) {
+                setupAnimationDrawable();
+            } else {
+                loadMoreImages();
+            }
         }
     }
 
     public void setImages(ArrayList<String> uris) {
+        this.uris = uris;
         if (isLoading()) {
             // cancel ongoing tasks (if still loading previous images)
             for (int index = 0; index < activeTasks.size(); index++) {
@@ -110,8 +119,18 @@ public class RCTImageSequenceView extends ImageView {
 
         activeTasks = new ArrayList<>(uris.size());
         bitmaps = new HashMap<>(uris.size());
+        loadedPos = 0;
 
-        for (int index = 0; index < uris.size(); index++) {
+        loadMoreImages();
+    }
+
+    private void loadMoreImages() {
+        if (addingQueue || loadedPos >= uris.size() - 1) {
+            return;
+        }
+
+        addingQueue = true;
+        for (int index = loadedPos + 1; index < uris.size(); index++) {
             String uri = uris.get(index);
             DownloadImageTask task = new DownloadImageTask(index, uri, getContext());
             activeTasks.add(task);
@@ -119,10 +138,14 @@ public class RCTImageSequenceView extends ImageView {
             try {
                 task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } catch (RejectedExecutionException e){
+                activeTasks.remove(task);
                 Log.e("react-native-image-sequence", "DownloadImageTask failed" + e.getMessage());
-                break;
+                addingQueue = false;
+                return;
             }
+            loadedPos += 1;
         }
+        addingQueue = false;
     }
 
     public void setFramesPerSecond(Integer framesPerSecond) {
